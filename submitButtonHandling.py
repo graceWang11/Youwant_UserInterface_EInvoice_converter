@@ -5,11 +5,19 @@ from flask import Flask, request, jsonify, send_from_directory, render_template
 from werkzeug.utils import secure_filename
 from googletrans import Translator
 from flask_cors import CORS  # Import CORS
+import logging
 
+logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__,static_folder='static')
 CORS(app)#enable CORS on all routes
 UPLOAD_FOLDER = 'uploads'
 PROCESSED_FOLDER = 'processed'
+DESKTOP_FOLDER = os.path.join(os.path.expanduser("~"), "Desktop")  # Path to the user's desktop
+DOWNLOAD_FOLDER = os.path.join(DESKTOP_FOLDER, "Downloaded")
+
+# Ensure the base download folder exists
+os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['PROCESSED_FOLDER'] = PROCESSED_FOLDER
 
@@ -72,44 +80,75 @@ def calculate_single_price(df):
     df['SinglePrice'] = df.apply(lambda row: round(row['ExPrice'] / row['Qty'], 2) if row['Qty'] else row['ExPrice'], axis=1)
     return df
 
-def save_translated_data(df, file_path):
-    """Save the processed data back to an Excel file in the processed folder."""
-    output_path = os.path.join(app.config['PROCESSED_FOLDER'], os.path.basename(file_path))
+def save_translated_data(df, vendor_name, inv_number):
+    """Save the processed data back to an Excel file in a vendor-specific folder on the desktop."""
+    vendor_folder = os.path.join(DOWNLOAD_FOLDER, vendor_name)
+    os.makedirs(vendor_folder, exist_ok=True)  # Make sure the vendor folder exists
+
+    new_filename = f"{vendor_name}_{inv_number}.xlsx"
+    output_path = os.path.join(vendor_folder, new_filename)
     df.to_excel(output_path, index=False)
     return output_path
 
+def get_inv_number_from_filename(filename):
+    # This assumes the format "Prefix_INVNumber_SomethingElse.xlsx" and you want "INVNumber"
+    parts = filename.split('_')
+    if len(parts) > 1:
+        return parts[1]  # This should be INV240610111
+    return None  # Return None or raise an error if the format is unexpected
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
+    app.logger.info("Received upload request")
     if 'file' not in request.files:
-        print("No file part")
+        app.logger.warning("No file part in request")
         return jsonify({'success': False, 'message': 'No file part'})
-
+    
     file = request.files['file']
-    if file.filename == '':
-        print("No selected file")
-        return jsonify({'success': False, 'message': 'No selected file'})
+    vendor_name = request.form.get('vendor')
 
-    if file:
-        filename = secure_filename(file.filename)
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(file_path)
-        print(f"File {filename} uploaded successfully")
-        response_message = f"File {filename} uploaded successfully."
+    if not file or file.filename == '':
+        return jsonify({'success': False, 'message': 'No file provided'})
 
-        # Process the file
-        processed_file_path = process_file(file_path)
-        print(f"File {filename} processed successfully")
-        response_message += f" File {filename} processed successfully."
+    if not vendor_name:
+        return jsonify({'success': False, 'message': 'Vendor name is required'})
 
-        return jsonify({'success': True, 'message': response_message, 'downloadUrl': f'/downloads/{os.path.basename(processed_file_path)}'})
+    filename = secure_filename(file.filename)
+    base_name, _ = os.path.splitext(filename)
+    inv_number = base_name.split('_')[0] if '_' in base_name else base_name
 
-    return jsonify({'success': False, 'message': 'File upload failed'})
+    if not inv_number:
+        return jsonify({'success': False, 'message': 'Invalid filename format'})
+
+    vendor_folder = os.path.join(DESKTOP_FOLDER, vendor_name)
+    os.makedirs(vendor_folder, exist_ok=True)
+
+    new_filename = f"{vendor_name}_{inv_number}.xlsx"
+    file_path = os.path.join(vendor_folder, new_filename)
+
+    file.save(file_path)  # Save the uploaded file first
+
+    # Process the file
+    try:
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(file_path)  # Save the uploaded file first
+
+        df = process_file(file_path)  # Assuming process_file reads, processes, and re-saves the file
+
+        processed_file_path = save_translated_data(df, vendor_name, inv_number)
+
+        download_url = f'/downloads/{vendor_name}/{os.path.basename(processed_file_path)}'
+        return jsonify({'success': True, 'message': f'File saved as {os.path.basename(processed_file_path)}', 'downloadUrl': download_url})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
 
 
-@app.route('/downloads/<filename>')
-def download_file(filename):
-    """Serve processed files for download."""
-    return send_from_directory(app.config['PROCESSED_FOLDER'], filename)
+@app.route('/downloads/<vendor_name>/<filename>')
+#Updating Downloading function 
+#Specify Downloading file path 
+def download_file(vendor_name, filename):
+    directory = os.path.join(DOWNLOAD_FOLDER, vendor_name)
+    return send_from_directory(directory, filename, as_attachment=True)
 
 @app.route('/converter.html')
 def converter():

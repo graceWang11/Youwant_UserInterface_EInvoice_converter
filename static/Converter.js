@@ -33,9 +33,15 @@ document.addEventListener("DOMContentLoaded", function() {
             method: 'POST',
             body: formData,
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok ' + response.statusText);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
+                console.log('File processed successfully:', data.message);
                 responseDiv.innerHTML = data.message; // Display the step-by-step messages
                 document.getElementById('fileList').innerHTML = "File converted successfully!";
                 const downloadLink = document.getElementById('downloadLink');
@@ -43,12 +49,13 @@ document.addEventListener("DOMContentLoaded", function() {
                 downloadLink.style.display = 'block';
                 document.getElementById('downloadButton').style.display = 'block';
             } else {
-                responseDiv.innerHTML = data.message; // Display error messages
+                document.getElementById('fileList').innerHTML = "Failed to convert the file.";
+                throw new Error('Processing failed: ' + data.message);
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            responseDiv.innerHTML = "Error processing your file. Please try again.";
+            document.getElementById('fileList').innerHTML = "Error processing your file. Please try again.";
         });
     }
     

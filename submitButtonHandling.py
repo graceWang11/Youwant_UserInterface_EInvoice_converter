@@ -18,10 +18,18 @@ def read_excel_file(file_path):
     return pd.read_excel(file_path)
 
 def clean_descriptions(df):
-    """Clean up product descriptions to remove unwanted characters and formats."""
+    # Remove specific characters and leading special symbols except those followed by digits
     df['Description'] = df['Description'].apply(lambda x: re.sub(r'[箱\\P#]', '', str(x)))
+    # Clean up everything after '*' that does not involve 'KG' or 'g'
     df['Description'] = df['Description'].apply(lambda x: re.sub(r'\*[^Kg]*', '', str(x)))
+    # Remove leading numbers followed by a period
+    df['Description'] = df['Description'].apply(lambda x: re.sub(r'^\d+\.', '', str(x)))
+    # Remove all three-digit numbers
+    df['Description'] = df['Description'].apply(lambda x: re.sub(r'\b\d{3}\b', '', str(x)))
+    # If there are still numbers formatted as .XX., remove those as well
+    df['Description'] = df['Description'].apply(lambda x: re.sub(r'\.\d{2}\.', '', str(x)))
     df['Description'] = df['Description'].apply(lambda x: re.sub(r'^[^\w\d]+', '', str(x)))
+    df['Barcode'] = df['Barcode'].apply(lambda x: re.sub(r'-', '', str(x)))
     return df
 
 def translate_text(text, source_lang='zh-cn', target_lang='en'):
@@ -39,17 +47,23 @@ def translate_descriptions(df):
     return df
 
 def update_quantity(df):
-    """Update product quantity based on multipliers found in the descriptions."""
+    # Function to extract and multiply the quantities based on multipliers found after asterisks
     def extract_and_multiply_qty(row):
         try:
+            # Find all numbers after each '*' symbol
             multipliers = re.findall(r'\*(\d+)', row['Description'])
-            result = row['Qty']
-            for multiplier in multipliers:
-                result *= int(multiplier)
+            if len(multipliers) >= 2:
+                # Multiply found numbers
+                result = row['Qty'] * int(multipliers[0]) * int(multipliers[1])
+            else:
+                # If less than two multipliers, use the first one if available
+                result = row['Qty'] * int(multipliers[0]) if multipliers else row['Qty']
             return result
-        except Exception as e:
-            print(f"Error processing quantity for row: {row['Description']} with error: {str(e)}")
+        except:
+            # Return original Qty if there's an issue in parsing
             return row['Qty']
+
+    # Apply the function to the dataframe
     df['Qty'] = df.apply(extract_and_multiply_qty, axis=1)
     return df
 
@@ -105,10 +119,15 @@ def converter():
 def process_file(file_path):
     """Process the uploaded file by cleaning, translating, and recalculating data."""
     df = read_excel_file(file_path)
-    df = clean_descriptions(df)
-    df = translate_descriptions(df)
+    #Update Quantity first
     df = update_quantity(df)
+    #Calculates the single Price for each of the Item
     df = calculate_single_price(df)
+    #Clean up the description 
+    df = clean_descriptions(df)
+    #Translate chinese description to English
+    df = translate_descriptions(df)
+    
     return save_translated_data(df, file_path)
 
 if __name__ == '__main__':

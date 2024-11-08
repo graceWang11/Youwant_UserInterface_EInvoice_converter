@@ -4,39 +4,83 @@
     <meta charset="utf-8">
     <title>E-Invoice Converter</title>
     <link rel="stylesheet" href="/static/style.css">
-    <script src="/static/Converter.js"></script>
+    <!-- Add Lucide icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div class="container">
-        <!-- Files upload Function -->
-        <div class="input-column">
-            <form id="uploadForm" enctype="multipart/form-data" onsubmit="return false;">
-                <label for="fileInput">Upload the file that you want to convert:</label>
-                <label>请上传你想转换的文件：</label>
-                <input type="file" id="fileInput" name="fileInput" required>
-                
-                <!-- Vendor Input -->
-                <label for="vendorInput">Enter Vendor Name:</label>
-                <label>请输入供货商名字</label>
-                <input type="text" id="vendorInput" name="vendorInput" placeholder="Enter Vendor Name 请输入供货商名字" required>
-                
-                <button type="button" >Submit</button>
-            </form>
-            <!-- Response Div for displaying processing messages -->
-            <div id="response"></div>
-        </div>
-        
-        <!-- Output file Function -->
-        <div class="output-column">
-            <h2>Converted Files 转换后的文件</h2>
-            <div id="fileList">No files converted yet.</div>
-            <div>还没有任何被转换的文件</div>
+        <div class="card">
+            <div class="card-header">
+                <h1 class="card-title">E-Invoice Converter</h1>
+            </div>
             
-            <!-- Downloading button -->
-            <a id="downloadLink" >
-                <button type="button" id="downloadButton">Download</button>
-            </a>
+            <div class="card-content">
+                <div class="grid-container">
+                    <!-- Input Column -->
+                    <div class="input-column">
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <div class="form-group">
+                                <label for="fileInput">Upload the file you want to convert:</label>
+                                <p class="text-muted">请上传你想转换的文件：</p>
+                                
+                                <div class="upload-area">
+                                    <div class="upload-content">
+                                        <i data-lucide="cloud-upload" class="upload-icon"></i>
+                                        <div class="upload-text">
+                                            <label for="fileInput" class="upload-label">
+                                                Upload a file
+                                                <input type="file" 
+                                                       id="fileInput" 
+                                                       name="file" 
+                                                       accept=".xlsx,.xls,.csv" 
+                                                       class="hidden-input" 
+                                                       required>
+                                            </label>
+                                            <p>or drag and drop</p>
+                                        </div>
+                                        <p class="file-types">XLSX, XLS, CSV up to 10MB</p>
+                                    </div>
+                                </div>
+                                <p id="selectedFile" class="selected-file"></p>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="vendorInput">Enter Vendor Name:</label>
+                                <p class="text-muted">请输入供货商名字</p>
+                                <input type="text" 
+                                       id="vendorInput" 
+                                       name="vendor" 
+                                       placeholder="Enter Vendor Name 请输入供货商名字" 
+                                       required>
+                            </div>
+
+                            <button type="button" id="submitButton" class="submit-button">
+                                <span class="button-text">Submit</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Output Column -->
+                    <div class="output-column">
+                        <h2>Converted Files 转换后的文件</h2>
+                        <div id="fileList" class="file-list">No files converted yet.</div>
+                        <div id="fileList1" class="text-muted">还没有任何被转换的文件</div>
+                        
+                        <div id="response" class="response-message"></div>
+                        
+                        <div class="download-section">
+                            <a id="downloadLink" href="#" class="download-link">
+                                <button type="button" id="downloadButton" class="download-button">
+                                    <i data-lucide="download" class="download-icon"></i>
+                                    Download Converted File
+                                </button>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+    <script src="/static/Converter.js"></script>
 </body>
 </html>

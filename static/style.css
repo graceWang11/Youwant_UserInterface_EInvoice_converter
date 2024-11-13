@@ -24,6 +24,16 @@ body, html {
 .card-header {
     text-align: center;
     margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1000px;
+    margin: 0 auto;
 }
 
 .card-title {
@@ -196,4 +206,31 @@ input[type="text"] {
 /* File list */
 .file-list {
     margin-bottom: 0.5rem;
+}
+
+/* Add these styles */
+.nav-links {
+    margin-left: 1rem;
+}
+
+.history-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: #3b82f6;
+    color: white;
+    text-decoration: none;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    transition: background-color 0.2s;
+}
+
+.history-link:hover {
+    background-color: #2563eb;
+}
+
+.history-icon {
+    width: 1rem;
+    height: 1rem;
 }

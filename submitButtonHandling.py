@@ -6,6 +6,8 @@ from werkzeug.utils import secure_filename
 from googletrans import Translator
 from flask_cors import CORS
 import logging
+import json
+from datetime import datetime
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -17,6 +19,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 DESKTOP_FOLDER = os.path.join(os.path.expanduser("~"), "Desktop")
 DOWNLOAD_FOLDER = os.path.join(DESKTOP_FOLDER, "Downloaded")
+UPLOAD_LOG_FILE = os.path.join(BASE_DIR, 'upload_log.json')
 
 # Ensure directories exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -102,6 +105,37 @@ def calculate_single_price(df):
         app.logger.error(f"Error calculating prices: {str(e)}")
         raise
 
+def log_upload(filename, vendor_name, status):
+    """
+    Log file upload details to a JSON file
+    """
+    try:
+        # Create log entry
+        log_entry = {
+            'filename': filename,
+            'vendor': vendor_name,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'status': status
+        }
+        
+        # Read existing logs
+        if os.path.exists(UPLOAD_LOG_FILE):
+            with open(UPLOAD_LOG_FILE, 'r') as f:
+                logs = json.load(f)
+        else:
+            logs = []
+        
+        # Append new log
+        logs.append(log_entry)
+        
+        # Write updated logs
+        with open(UPLOAD_LOG_FILE, 'w') as f:
+            json.dump(logs, f, indent=4)
+            
+        app.logger.info(f"Upload logged: {log_entry}")
+    except Exception as e:
+        app.logger.error(f"Error logging upload: {str(e)}")
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     """Handle file upload and processing."""
@@ -118,11 +152,20 @@ def upload_file():
         if not vendor_name:
             return jsonify({'success': False, 'message': 'Vendor name required'})
 
-        # Save uploaded file
-        filename = secure_filename(file.filename)
-        upload_path = os.path.join(UPLOAD_FOLDER, filename)
+        # Create vendor-specific folder in uploads
+        vendor_upload_folder = os.path.join(UPLOAD_FOLDER, vendor_name)
+        os.makedirs(vendor_upload_folder, exist_ok=True)
+
+        # Save uploaded file with timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        original_filename = secure_filename(file.filename)
+        filename = f"{timestamp}_{original_filename}"
+        upload_path = os.path.join(vendor_upload_folder, filename)
         file.save(upload_path)
         app.logger.info(f"File saved to: {upload_path}")
+
+        # Log the upload
+        log_upload(filename, vendor_name, 'uploaded')
 
         # Process file
         df = read_excel_file(upload_path)
@@ -139,8 +182,8 @@ def upload_file():
         output_path = os.path.join(vendor_folder, output_filename)
         df.to_excel(output_path, index=False)
         
-        # Clean up upload
-        os.remove(upload_path)
+        # Log successful processing
+        log_upload(filename, vendor_name, 'processed')
 
         return jsonify({
             'success': True,
@@ -149,6 +192,9 @@ def upload_file():
         })
 
     except Exception as e:
+        # Log failed processing
+        if 'filename' in locals():
+            log_upload(filename, vendor_name, f'failed: {str(e)}')
         app.logger.error(f"Error processing upload: {str(e)}")
         return jsonify({'success': False, 'message': str(e)})
 
@@ -169,5 +215,58 @@ def download_file(vendor_name, filename):
 def home():
     return send_from_directory('static', 'converter.html')
 
+@app.route('/history')
+def history():
+    return send_from_directory('static', 'upload-history.html')
+
+@app.route('/upload-history')
+def view_upload_history():
+    """View the upload history"""
+    try:
+        if os.path.exists(UPLOAD_LOG_FILE):
+            with open(UPLOAD_LOG_FILE, 'r') as f:
+                logs = json.load(f)
+            return jsonify({'success': True, 'logs': logs})
+        return jsonify({'success': True, 'logs': []})
+    except Exception as e:
+        app.logger.error(f"Error retrieving upload history: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/uploads/<vendor_name>')
+def list_uploaded_files(vendor_name):
+    """List all files uploaded by a specific vendor"""
+    try:
+        vendor_folder = os.path.join(UPLOAD_FOLDER, vendor_name)
+        if not os.path.exists(vendor_folder):
+            return jsonify({'success': True, 'files': []})
+        
+        files = []
+        for filename in os.listdir(vendor_folder):
+            file_path = os.path.join(vendor_folder, filename)
+            if os.path.isfile(file_path):
+                files.append({
+                    'filename': filename,
+                    'uploaded_at': datetime.fromtimestamp(os.path.getctime(file_path)).strftime('%Y-%m-%d %H:%M:%S'),
+                    'size': os.path.getsize(file_path)
+                })
+        
+        return jsonify({'success': True, 'files': files})
+    except Exception as e:
+        app.logger.error(f"Error listing uploads: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/uploads/<vendor_name>/<filename>')
+def download_original_file(vendor_name, filename):
+    """Download an original uploaded file"""
+    try:
+        return send_from_directory(
+            os.path.join(UPLOAD_FOLDER, vendor_name),
+            filename,
+            as_attachment=True
+        )
+    except Exception as e:
+        app.logger.error(f"Download error: {str(e)}")
+        return jsonify({'success': False, 'message': 'Download failed'})
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

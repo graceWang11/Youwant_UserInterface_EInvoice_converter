@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload History</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 2rem;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .section {
+            margin-bottom: 2rem;
+        }
+        .download-link {
+            color: blue;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .file-size {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background-color: #3b82f6;
+            color: white;
+            text-decoration: none;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .back-button:hover {
+            background-color: #2563eb;
+        }
+    </style>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="header">
+        <h1>Upload History</h1>
+        <a href="/" class="back-button">
+            <i data-lucide="arrow-left" style="width: 1rem; height: 1rem;"></i>
+            Back to Converter
+        </a>
+    </div>
+    
+    <div class="section">
+        <h2>Processing History</h2>
+        <table id="historyTable">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Filename</th>
+                    <th>Vendor</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="historyBody">
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Uploaded Files</h2>
+        <table id="uploadedFilesTable">
+            <thead>
+                <tr>
+                    <th>Upload Time</th>
+                    <th>Filename</th>
+                    <th>Vendor</th>
+                    <th>Size</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="uploadedFilesBody">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+        
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Load processing history
+        fetch('/upload-history')
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById('historyBody');
+                data.logs.forEach(log => {
+                    const row = tbody.insertRow();
+                    row.insertCell(0).textContent = log.timestamp;
+                    row.insertCell(1).textContent = log.filename;
+                    row.insertCell(2).textContent = log.vendor;
+                    row.insertCell(3).textContent = log.status;
+                });
+            })
+            .catch(error => console.error('Error:', error));
+
+        // Load uploaded files for each vendor
+        fetch('/upload-history')
+            .then(response => response.json())
+            .then(data => {
+                // Get unique vendors
+                const vendors = [...new Set(data.logs.map(log => log.vendor))];
+                
+                // Fetch files for each vendor
+                return Promise.all(vendors.map(vendor => 
+                    fetch(`/uploads/${vendor}`)
+                        .then(response => response.json())
+                        .then(data => ({vendor, files: data.files}))
+                ));
+            })
+            .then(vendorFiles => {
+                const tbody = document.getElementById('uploadedFilesBody');
+                vendorFiles.forEach(({vendor, files}) => {
+                    files.forEach(file => {
+                        const row = tbody.insertRow();
+                        row.insertCell(0).textContent = file.uploaded_at;
+                        row.insertCell(1).textContent = file.filename;
+                        row.insertCell(2).textContent = vendor;
+                        row.insertCell(3).textContent = formatFileSize(file.size);
+                        
+                        const actionCell = row.insertCell(4);
+                        const downloadLink = document.createElement('a');
+                        downloadLink.href = `/uploads/${vendor}/${file.filename}`;
+                        downloadLink.className = 'download-link';
+                        downloadLink.textContent = 'Download';
+                        actionCell.appendChild(downloadLink);
+                    });
+                });
+            })
+            .catch(error => console.error('Error:', error));
+    </script>
+</body>
+</html> 

@@ -8,6 +8,8 @@ from flask_cors import CORS
 import logging
 import json
 from datetime import datetime
+from threading import Lock
+import time
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -24,6 +26,10 @@ UPLOAD_LOG_FILE = os.path.join(BASE_DIR, 'upload_log.json')
 # Ensure directories exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
+
+# Add these after your other global variables
+processing_status = {}
+status_lock = Lock()
 
 def read_excel_file(file_path):
     """Read data from Excel or CSV file."""
@@ -46,17 +52,38 @@ def read_excel_file(file_path):
 def clean_descriptions(df):
     """Clean up the description field."""
     try:
+        # Check if Description column exists
+        if 'Description' not in df.columns:
+            # Try to find a similar column name
+            possible_desc_columns = [col for col in df.columns if 'desc' in col.lower()]
+            if possible_desc_columns:
+                df = df.rename(columns={possible_desc_columns[0]: 'Description'})
+            else:
+                raise ValueError("No 'Description' column found in the uploaded file")
+
+        # Check if Barcode column exists
+        if 'Barcode' not in df.columns:
+            possible_barcode_columns = [col for col in df.columns if 'barcode' in col.lower() or 'code' in col.lower()]
+            if possible_barcode_columns:
+                df = df.rename(columns={possible_barcode_columns[0]: 'Barcode'})
+            else:
+                df['Barcode'] = ''  # Create empty Barcode column if none exists
+
+        # Rest of the cleaning logic
         df['Description'] = df['Description'].apply(lambda x: re.sub(r'[箱\\P#]', '', str(x)))
         df['Description'] = df['Description'].apply(lambda x: re.sub(r'\*[^Kg]*', '', str(x)))
         df['Description'] = df['Description'].apply(lambda x: re.sub(r'^\d+\.', '', str(x)))
         df['Description'] = df['Description'].apply(lambda x: re.sub(r'\b\d{3}\b', '', str(x)))
         df['Description'] = df['Description'].apply(lambda x: re.sub(r'\.\d{2}\.', '', str(x)))
         df['Description'] = df['Description'].apply(lambda x: re.sub(r'^[^\w\d]+', '', str(x)))
-        df['Barcode'] = df['Barcode'].apply(lambda x: re.sub(r'-', '', str(x)))
+        
+        if 'Barcode' in df.columns:
+            df['Barcode'] = df['Barcode'].apply(lambda x: re.sub(r'-', '', str(x)))
+        
         return df
     except Exception as e:
         app.logger.error(f"Error cleaning descriptions: {str(e)}")
-        raise
+        raise ValueError(f"Error processing file: {str(e)}")
 
 def translate_text(text):
     """Translate text from Chinese to English."""
@@ -136,6 +163,43 @@ def log_upload(filename, vendor_name, status):
     except Exception as e:
         app.logger.error(f"Error logging upload: {str(e)}")
 
+def map_columns(df):
+    """Map original column names to required column names"""
+    try:
+        # Create the mapping
+        df = df.rename(columns={
+            'Description1': 'Description',
+            'StockQty': 'Qty',
+            'SalesPrice1': 'ExPrice',
+            'Barcode1': 'Barcode'
+        })
+        
+        # Log the columns for debugging
+        app.logger.info(f"Columns after mapping: {df.columns.tolist()}")
+        
+        # Verify the required columns exist
+        required_columns = ['Description', 'Qty', 'ExPrice']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        
+        if missing_columns:
+            # If columns are missing, check if they exist under original names
+            original_names = {
+                'Description': 'Description1',
+                'Qty': 'StockQty',
+                'ExPrice': 'SalesPrice1'
+            }
+            
+            # Try to map any missing columns from their original names
+            for missing_col in missing_columns:
+                original_name = original_names.get(missing_col)
+                if original_name in df.columns:
+                    df[missing_col] = df[original_name]
+        
+        return df
+    except Exception as e:
+        app.logger.error(f"Error mapping columns: {str(e)}")
+        raise ValueError(f"Error mapping columns: {str(e)}")
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     """Handle file upload and processing."""
@@ -167,13 +231,23 @@ def upload_file():
         # Log the upload
         log_upload(filename, vendor_name, 'uploaded')
 
-        # Process file
+        # Update status for various processing steps
+        update_processing_status(vendor_name, original_filename, "Reading file...", 0.2)
         df = read_excel_file(upload_path)
+        
+        update_processing_status(vendor_name, original_filename, "Mapping columns...", 0.4)
+        df = map_columns(df)
+        
+        update_processing_status(vendor_name, original_filename, "Processing quantities...", 0.6)
         df = update_quantity(df)
         df = calculate_single_price(df)
+        
+        update_processing_status(vendor_name, original_filename, "Cleaning descriptions...", 0.8)
         df = clean_descriptions(df)
+        
+        update_processing_status(vendor_name, original_filename, "Translating...", 0.9)
         df = translate_descriptions(df)
-
+        
         # Save processed file
         vendor_folder = os.path.join(DOWNLOAD_FOLDER, vendor_name)
         os.makedirs(vendor_folder, exist_ok=True)
@@ -185,18 +259,26 @@ def upload_file():
         # Log successful processing
         log_upload(filename, vendor_name, 'processed')
 
+        update_processing_status(vendor_name, original_filename, "Completed", 1.0)
+        
         return jsonify({
             'success': True,
             'message': 'File processed successfully',
             'downloadUrl': f'/downloads/{vendor_name}/{output_filename}'
         })
 
+    except ValueError as e:
+        # Log failed processing with specific error
+        if 'filename' in locals():
+            log_upload(filename, vendor_name, f'failed: {str(e)}')
+        app.logger.error(f"Validation error: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)})
     except Exception as e:
         # Log failed processing
         if 'filename' in locals():
             log_upload(filename, vendor_name, f'failed: {str(e)}')
         app.logger.error(f"Error processing upload: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)})
+        return jsonify({'success': False, 'message': f"An error occurred while processing the file: {str(e)}"})
 
 @app.route('/downloads/<vendor_name>/<filename>')
 def download_file(vendor_name, filename):
@@ -267,6 +349,26 @@ def download_original_file(vendor_name, filename):
     except Exception as e:
         app.logger.error(f"Download error: {str(e)}")
         return jsonify({'success': False, 'message': 'Download failed'})
+
+@app.route('/process-status/<vendor>/<filename>')
+def get_process_status(vendor, filename):
+    """Get the processing status for a specific file"""
+    status_key = f"{vendor}_{filename}"
+    with status_lock:
+        status = processing_status.get(status_key, {
+            'status': 'Processing...',
+            'progress': 0.5
+        })
+    return jsonify(status)
+
+def update_processing_status(vendor, filename, status, progress):
+    """Update the processing status for a specific file"""
+    status_key = f"{vendor}_{filename}"
+    with status_lock:
+        processing_status[status_key] = {
+            'status': status,
+            'progress': progress
+        }
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -1,0 +1,170 @@
+[
+    {
+        "filename": "20241118_001911_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:19:11",
+        "status": "uploaded"
+    },
+    {
+        "filename": "20241118_001911_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:19:12",
+        "status": "failed: Missing required columns: Description, Qty, ExPrice"
+    },
+    {
+        "filename": "20241118_002246_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:22:46",
+        "status": "uploaded"
+    },
+    {
+        "filename": "20241118_002246_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:22:46",
+        "status": "failed: Missing required columns after mapping: Description, Qty, ExPrice. Original columns were: Unnamed: 0, Category, StockId, Barcode1, Description1, StockQty, StockPrice, SalesPrice1, Description2, GSTRate"
+    },
+    {
+        "filename": "20241118_002257_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:22:57",
+        "status": "uploaded"
+    },
+    {
+        "filename": "20241118_002257_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:22:57",
+        "status": "failed: Missing required columns after mapping: Description, Qty, ExPrice. Original columns were: Unnamed: 0, Category, StockId, Barcode1, Description1, StockQty, StockPrice, SalesPrice1, Description2, GSTRate"
+    },
+    {
+        "filename": "20241118_002530_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:25:30",
+        "status": "uploaded"
+    },
+    {
+        "filename": "20241118_002532_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:25:32",
+        "status": "uploaded"
+    },
+    {
+        "filename": "20241118_002535_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:25:35",
+        "status": "uploaded"
+    },
+    {
+        "filename": "20241118_002535_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:25:35",
+        "status": "uploaded"
+    },
+    {
+        "filename": "20241118_002536_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:25:36",
+        "status": "uploaded"
+    },
+    {
+        "filename": "20241118_002536_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:25:36",
+        "status": "uploaded"
+    },
+    {
+        "filename": "20241118_002542_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:25:42",
+        "status": "uploaded"
+    },
+    {
+        "filename": "20241118_002543_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:25:43",
+        "status": "uploaded"
+    },
+    {
+        "filename": "20241118_002547_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:25:47",
+        "status": "uploaded"
+    },
+    {
+        "filename": "20241118_002530_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:26:16",
+        "status": "processed"
+    },
+    {
+        "filename": "20241118_002532_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:26:20",
+        "status": "processed"
+    },
+    {
+        "filename": "20241118_002535_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:26:21",
+        "status": "processed"
+    },
+    {
+        "filename": "20241118_002535_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:26:22",
+        "status": "processed"
+    },
+    {
+        "filename": "20241118_002536_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:26:22",
+        "status": "processed"
+    },
+    {
+        "filename": "20241118_002536_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:26:22",
+        "status": "processed"
+    },
+    {
+        "filename": "20241118_002543_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:26:28",
+        "status": "processed"
+    },
+    {
+        "filename": "20241118_002542_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:26:28",
+        "status": "processed"
+    },
+    {
+        "filename": "20241118_002547_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:26:31",
+        "status": "processed"
+    },
+    {
+        "filename": "20241118_002749_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:27:49",
+        "status": "uploaded"
+    },
+    {
+        "filename": "20241118_002749_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:28:18",
+        "status": "processed"
+    },
+    {
+        "filename": "20241118_003033_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:30:33",
+        "status": "uploaded"
+    },
+    {
+        "filename": "20241118_003033_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
+        "vendor": "KAISI",
+        "timestamp": "2024-11-18 00:31:02",
+        "status": "processed"
+    }
+]

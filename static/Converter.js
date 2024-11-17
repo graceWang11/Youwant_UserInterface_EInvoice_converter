@@ -61,61 +61,109 @@ document.addEventListener("DOMContentLoaded", function() {
             alert('Please enter a vendor name.');
             return;
         }
-        uploadAndPrepareDownload();
+        uploadAndPrepareDownload(fileInput.files[0], vendorInput.value.trim());
     });
 
-    function uploadAndPrepareDownload() {
-        const formData = new FormData();
+    // Add these new functions
+    function updateProgress(percentage, status) {
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.querySelector('.progress-fill');
+        const progressText = document.querySelector('.progress-text');
+        const progressStatus = document.querySelector('.progress-status');
         
-        // Update UI to processing state
-        buttonText.textContent = 'Processing...';
-        submitButton.disabled = true;
-        responseDiv.innerHTML = '';
-        fileList.innerHTML = 'Converting...';
+        progressContainer.style.display = 'block';
+        progressFill.style.width = `${percentage}%`;
+        progressText.textContent = `Processing: ${percentage}%`;
+        if (status) {
+            progressStatus.textContent = status;
+        }
+    }
+
+    function resetProgress() {
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.querySelector('.progress-fill');
+        const progressText = document.querySelector('.progress-text');
+        const progressStatus = document.querySelector('.progress-status');
         
-        formData.append('file', fileInput.files[0]);
-        formData.append('vendor', vendorInput.value.trim());
-    
-        fetch('/upload', { 
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Success case
-                responseDiv.innerHTML = `
-                    <div class="alert alert-success">
-                        <h4>Success</h4>
-                        <p>${data.message}</p>
-                    </div>
-                `;
-                fileList.innerHTML = 'File converted successfully!';
-                fileList1.innerHTML = '文件以转换成功！';
-                // Setup download
-                downloadLink.href = data.downloadUrl;
-                downloadLink.style.display = 'block';
-                downloadButton.style.display = 'block';
-            } else {
-                throw new Error(data.message);
+        progressContainer.style.display = 'none';
+        progressFill.style.width = '0%';
+        progressText.textContent = 'Processing: 0%';
+        progressStatus.textContent = 'Initializing...';
+    }
+
+    // Update the uploadAndPrepareDownload function
+    async function uploadAndPrepareDownload(file, vendor) {
+        try {
+            resetProgress();
+            updateProgress(0, 'Starting upload...');
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('vendor', vendor);
+
+            // Create custom XMLHttpRequest to track upload progress
+            const xhr = new XMLHttpRequest();
+            
+            const promise = new Promise((resolve, reject) => {
+                xhr.upload.onprogress = function(e) {
+                    if (e.lengthComputable) {
+                        const percentComplete = Math.round((e.loaded / e.total) * 50);
+                        updateProgress(percentComplete, 'Uploading file...');
+                    }
+                };
+
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        const response = JSON.parse(xhr.responseText);
+                        resolve(response);
+                    } else {
+                        reject(new Error('Upload failed'));
+                    }
+                };
+
+                xhr.onerror = function() {
+                    reject(new Error('Upload failed'));
+                };
+            });
+
+            xhr.open('POST', '/upload', true);
+            xhr.send(formData);
+
+            // Start processing status updates
+            const processingInterval = setInterval(() => {
+                fetch(`/process-status/${vendor}/${file.name}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'completed') {
+                            clearInterval(processingInterval);
+                            updateProgress(100, 'Processing completed!');
+                            setTimeout(() => {
+                                resetProgress();
+                            }, 2000);
+                        } else {
+                            const processPercentage = 50 + Math.round(data.progress * 50);
+                            updateProgress(processPercentage, data.status);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error checking process status:', error);
+                    });
+            }, 1000);
+
+            const result = await promise;
+
+            if (!result.success) {
+                throw new Error(result.message || 'Upload failed');
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            responseDiv.innerHTML = `
-                <div class="alert alert-error">
-                    <h4>Error</h4>
-                    <p>${error.message}</p>
-                </div>
-            `;
-            fileList.innerHTML = 'Error processing your file. Please try again.';
-            downloadButton.style.display = 'none';
-            downloadLink.style.display = 'none';
-        })
-        .finally(() => {
-            // Reset button state
-            buttonText.textContent = 'Submit';
-            submitButton.disabled = false;
-        });
+
+            // Trigger download
+            window.location.href = result.downloadUrl;
+            return true;
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert(`Upload failed: ${error.message}`);
+            resetProgress();
+            return false;
+        }
     }
 });

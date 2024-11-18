@@ -96,6 +96,8 @@ document.addEventListener("DOMContentLoaded", function() {
         try {
             resetProgress();
             updateProgress(0, 'Starting upload...');
+            let processingInterval = null;
+            let isCompleted = false;
 
             const formData = new FormData();
             formData.append('file', file);
@@ -107,7 +109,7 @@ document.addEventListener("DOMContentLoaded", function() {
             const promise = new Promise((resolve, reject) => {
                 xhr.upload.onprogress = function(e) {
                     if (e.lengthComputable) {
-                        const percentComplete = Math.round((e.loaded / e.total) * 50);
+                        const percentComplete = Math.round((e.loaded / e.total) * 30);
                         updateProgress(percentComplete, 'Uploading file...');
                     }
                 };
@@ -130,39 +132,116 @@ document.addEventListener("DOMContentLoaded", function() {
             xhr.send(formData);
 
             // Start processing status updates
-            const processingInterval = setInterval(() => {
-                fetch(`/process-status/${vendor}/${file.name}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.status === 'completed') {
-                            clearInterval(processingInterval);
-                            updateProgress(100, 'Processing completed!');
-                            setTimeout(() => {
-                                resetProgress();
-                            }, 2000);
-                        } else {
-                            const processPercentage = 50 + Math.round(data.progress * 50);
-                            updateProgress(processPercentage, data.status);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error checking process status:', error);
-                    });
+            processingInterval = setInterval(async () => {
+                if (isCompleted) {
+                    clearInterval(processingInterval);
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/process-status/${vendor}/${encodeURIComponent(file.name)}`);
+                    const data = await response.json();
+                    
+                    if (data.status === 'Completed!' || data.progress >= 1.0) {
+                        isCompleted = true;
+                        clearInterval(processingInterval);
+                        updateProgress(100, 'Processing completed!');
+                        
+                        // Create hidden link and trigger download
+                        const link = document.createElement('a');
+                        link.href = `/downloads/${vendor}/${encodeURIComponent(file.name)}`;
+                        link.style.display = 'none';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        
+                        // Reset progress after a brief delay
+                        setTimeout(() => {
+                            resetProgress();
+                        }, 500);
+                        return;
+                    }
+                    
+                    const processPercentage = Math.round(data.progress * 100);
+                    updateProgress(processPercentage, data.status);
+                } catch (error) {
+                    console.error('Error checking process status:', error);
+                    isCompleted = true;
+                    clearInterval(processingInterval);
+                }
             }, 1000);
 
             const result = await promise;
-
             if (!result.success) {
                 throw new Error(result.message || 'Upload failed');
             }
 
-            // Trigger download
-            window.location.href = result.downloadUrl;
             return true;
         } catch (error) {
             console.error('Upload error:', error);
             alert(`Upload failed: ${error.message}`);
             resetProgress();
+            return false;
+        }
+    }
+
+    function downloadFile(vendor_name, filename) {
+        fetch(`/downloads/${vendor_name}/${filename}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const link = document.createElement('a');
+                    link.href = data.file_url;
+                    link.setAttribute('download', filename);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    console.log('Download completed');
+                } else {
+                    console.error('Download failed:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Download error:', error);
+            });
+    }
+
+    async function checkProcessingStatus(vendor, filename) {
+        try {
+            const response = await fetch(`/process-status/${vendor}/${encodeURIComponent(filename)}`);
+            const data = await response.json();
+            
+            if (data.status === 'Completed!' || data.progress >= 1.0) {
+                // Fetch the file as a blob
+                const downloadResponse = await fetch(`/download/${vendor}/${encodeURIComponent(filename)}`);
+                const blob = await downloadResponse.blob();
+                
+                // Create a blob URL and trigger download
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename; // Set the download filename
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                
+                // Clean up
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(link);
+                
+                return true;
+            }
+            
+            // Update progress bar
+            const progressBar = document.getElementById('progress-bar');
+            if (progressBar) {
+                progressBar.style.width = `${data.progress * 100}%`;
+                progressBar.textContent = `${Math.round(data.progress * 100)}%`;
+            }
+            
+            return false;
+        } catch (error) {
+            console.error('Error checking status:', error);
             return false;
         }
     }

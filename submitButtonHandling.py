@@ -310,17 +310,16 @@ def upload_file():
 def download_file(vendor, filename):
     """Handle file downloads without page navigation"""
     try:
+        uploads = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'])
         response = send_from_directory(
-            os.path.join(DOWNLOAD_FOLDER, vendor),
-            filename,
-            as_attachment=True,
-            download_name=filename
+            directory=os.path.join(uploads, vendor),
+            path=filename,
+            as_attachment=True
         )
-        # Add headers to prevent caching and navigation
+        # Add headers to prevent navigation
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
-        response.headers["Content-Disposition"] = f"attachment; filename={filename}"
         return response
     except Exception as e:
         app.logger.error(f"Download error: {str(e)}")

@@ -19,12 +19,14 @@ CORS(app)
 # Define folders
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
-DOWNLOAD_FOLDER = os.path.join(os.path.expanduser("~"), "Desktop", "Downloaded")
+PROCESSED_FOLDER = os.path.join(BASE_DIR, "processed")
+DESKTOP_DOWNLOADS = os.path.join(os.path.expanduser("~/Downloads"))
 UPLOAD_LOG_FILE = os.path.join(BASE_DIR, 'upload_log.json')
 
 # Ensure directories exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
+os.makedirs(PROCESSED_FOLDER, exist_ok=True)
+os.makedirs(DESKTOP_DOWNLOADS, exist_ok=True)
 
 # Add these after your other global variables
 processing_status = {}
@@ -263,7 +265,7 @@ def upload_file():
         
         # Save processed file
         update_processing_status(vendor_name, original_filename, "Saving converted file...", 0.95)
-        vendor_folder = os.path.join(DOWNLOAD_FOLDER, vendor_name)
+        vendor_folder = os.path.join(PROCESSED_FOLDER, vendor_name)
         os.makedirs(vendor_folder, exist_ok=True)
         
         output_filename = f"{vendor_name}_{os.path.splitext(filename)[0]}.xlsx"
@@ -309,20 +311,31 @@ def upload_file():
 def download_file(vendor, filename):
     """Handle file downloads."""
     try:
-        vendor_folder = os.path.join(DOWNLOAD_FOLDER, vendor)
-        os.makedirs(vendor_folder, exist_ok=True)
+        # First, check if file exists in processed folder
+        vendor_processed_folder = os.path.join(PROCESSED_FOLDER, vendor)
+        processed_file_path = os.path.join(vendor_processed_folder, filename)
         
-        app.logger.info(f"Attempting to download file from: {vendor_folder}/{filename}")
-        
-        if os.path.exists(os.path.join(vendor_folder, filename)):
-            return send_from_directory(
-                vendor_folder,
-                filename,
-                as_attachment=True
-            )
-        else:
-            app.logger.error(f"File not found: {vendor_folder}/{filename}")
+        if not os.path.exists(processed_file_path):
+            app.logger.error(f"File not found in processed folder: {processed_file_path}")
             return jsonify({'success': False, 'message': 'File not found'}), 404
+
+        # Create downloads directory if it doesn't exist
+        os.makedirs(DESKTOP_DOWNLOADS, exist_ok=True)
+        
+        # Copy file to downloads folder
+        import shutil
+        download_path = os.path.join(DESKTOP_DOWNLOADS, filename)
+        shutil.copy2(processed_file_path, download_path)
+        
+        app.logger.info(f"File copied to downloads: {download_path}")
+        
+        # Return the file from the processed folder
+        return send_from_directory(
+            vendor_processed_folder,
+            filename,
+            as_attachment=True,
+            download_name=filename
+        )
             
     except Exception as e:
         app.logger.error(f"Download error: {str(e)}")
@@ -394,15 +407,24 @@ def get_process_status(vendor, filename):
             if status is None:
                 # Check if the processed file exists
                 processed_filename = f"{vendor}_{os.path.splitext(filename)[0]}.xlsx"
-                processed_path = os.path.join(DOWNLOAD_FOLDER, vendor, processed_filename)
+                processed_path = os.path.join(PROCESSED_FOLDER, vendor, processed_filename)
                 if os.path.exists(processed_path):
-                    # Make sure to use the correct URL path
+                    app.logger.info(f"Found processed file at: {processed_path}")
+                    download_url = f'/downloads/{vendor}/{processed_filename}'
+                    app.logger.info(f"Generated download URL: {download_url}")
                     return jsonify({
                         'status': 'Completed!',
                         'progress': 1.0,
-                        'downloadUrl': f'/downloads/{vendor}/{processed_filename}'  # This URL must match your download route
+                        'downloadUrl': download_url
                     })
-            return jsonify(status or {
+            
+            # If file is still processing, return current status
+            if status:
+                app.logger.info(f"Current processing status: {status}")
+                return jsonify(status)
+                
+            # Default response if no status found
+            return jsonify({
                 'status': 'Processing...',
                 'progress': 0.5
             })
@@ -420,10 +442,24 @@ def update_processing_status(vendor, filename, status, progress):
     try:
         status_key = f"{vendor}_{filename}"
         with status_lock:
-            processing_status[status_key] = {
-                'status': status,
-                'progress': progress
-            }
+            # When processing is complete, include the download URL
+            if progress >= 1.0 or status == 'Completed!':
+                processed_filename = f"{vendor}_{os.path.splitext(filename)[0]}.xlsx"
+                # Save to processed folder path
+                processed_path = os.path.join(PROCESSED_FOLDER, vendor, processed_filename)
+                processing_status[status_key] = {
+                    'status': status,
+                    'progress': progress,
+                    'downloadUrl': f'/downloads/{vendor}/{processed_filename}'
+                }
+                app.logger.info(f"Updated status with download URL for {status_key}")
+                app.logger.info(f"Processed file path: {processed_path}")
+            else:
+                processing_status[status_key] = {
+                    'status': status,
+                    'progress': progress
+                }
+            app.logger.info(f"Status updated for {status_key}: {processing_status[status_key]}")
     except Exception as e:
         app.logger.error(f"Error updating process status: {str(e)}")
 

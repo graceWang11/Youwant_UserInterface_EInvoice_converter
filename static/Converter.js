@@ -253,20 +253,17 @@ document.addEventListener("DOMContentLoaded", function() {
 
         // Add click handler
         downloadButton.onclick = function() {
-            console.log('Download button clicked, navigating to:', downloadUrl);
-            window.location.href = downloadUrl;
+            console.log('Download button clicked, downloading from:', downloadUrl);
+            // Create a temporary link element
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.setAttribute('download', ''); // This triggers download instead of navigation
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         };
 
-        // Show the download section
-        // const downloadSection = document.querySelector('.download-section');
-        // if (downloadSection) {
-        //     downloadSection.style.display = 'block';
-        //     console.log('Download section display set to block');
-        // } else {
-        //     console.error('Download section not found in DOM');
-        // }
-        
-        console.log('Download button shown with URL:', downloadUrl); // Debug log
+        console.log('Download button shown with URL:', downloadUrl);
     }
 
     function blurBackground() {

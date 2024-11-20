@@ -65,7 +65,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     // Add these new functions
-    function updateProgress(percentage, status) {
+    function updateProgress(targetPercentage, status) {
         const progressContainer = document.getElementById('progressContainer');
         const progressBar = document.getElementById('progress-bar');
         const progressText = document.getElementById('progress-text');
@@ -76,23 +76,40 @@ document.addEventListener("DOMContentLoaded", function() {
             return;
         }
 
-        // Ensure the progress container is visible
+        // Show progress container
         progressContainer.style.display = 'block';
 
-        // Update the progress bar
-        progressBar.style.width = `${percentage}%`;
-        progressText.textContent = `${percentage}%`;
-        statusMessage.textContent = status;
+        // Get current progress
+        const currentWidth = parseInt(progressBar.style.width) || 0;
+        const targetWidth = targetPercentage;
 
-        // If completed, show success state
-        if (percentage >= 100) {
-            progressBar.style.backgroundColor = '#10B981'; // Change to success color
+        // Animate the progress
+        let currentProgress = currentWidth;
+        const animationDuration = 500; // 500ms
+        const steps = 20; // Number of steps in animation
+        const increment = (targetWidth - currentWidth) / steps;
+        const stepDuration = animationDuration / steps;
+
+        const animation = setInterval(() => {
+            if (currentProgress >= targetWidth) {
+                clearInterval(animation);
+                currentProgress = targetWidth;
+            }
+
+            // Update progress bar and text
+            progressBar.style.width = `${currentProgress}%`;
+            progressText.textContent = `${Math.round(currentProgress)}%`;
+            statusMessage.textContent = status;
+
+            currentProgress += increment;
+        }, stepDuration);
+
+        // If completed
+        if (targetPercentage >= 100) {
             setTimeout(() => {
                 progressContainer.style.display = 'none';
-            }, 2000); // Hide after 2 seconds
+            }, 1000); // Hide after 1 second
         }
-
-        console.log(`Progress updated: ${percentage}% - ${status}`); // Add this for debugging
     }
 
     function resetProgress() {

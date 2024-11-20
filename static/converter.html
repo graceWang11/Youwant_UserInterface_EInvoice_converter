@@ -66,12 +66,26 @@
                                 <span class="button-text">Submit</span>
                             </button>
 
+                            <!-- Progress Container -->
                             <div id="progressContainer" style="display: none;">
-                                <div class="progress">
-                                    <div class="progress-fill" id="progress-bar"></div>
+                                <!-- Blurred background overlay -->
+                                <div class="progress-overlay"></div>
+                                
+                                <!-- Progress content -->
+                                <div class="progress-content">
+                                    <h1 class="progress-title">Processing...</h1>
+                                    
+                                    <!-- Progress bar container -->
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar">
+                                            <div class="progress-fill" id="progress-bar"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Progress percentage -->
+                                    <div class="progress-text" id="progress-text">0%</div>
+                                    <div class="progress-status" id="status-message">Initializing...</div>
                                 </div>
-                                <div class="progress-text" id="progress-text"></div>
-                                <div class="progress-status" id="status-message"></div>
                             </div>
                         </form>
                     </div>

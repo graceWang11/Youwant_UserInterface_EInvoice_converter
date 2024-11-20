@@ -19,7 +19,7 @@ CORS(app)
 # Define folders
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
-DOWNLOAD_FOLDER = os.path.join(BASE_DIR, "processed")
+DOWNLOAD_FOLDER = os.path.join(os.path.expanduser("~"), "Desktop", "Downloaded")
 UPLOAD_LOG_FILE = os.path.join(BASE_DIR, 'upload_log.json')
 
 # Ensure directories exist
@@ -288,7 +288,6 @@ def upload_file():
         return jsonify({
             'success': True,
             'message': 'File processed successfully',
-            'downloadUrl': f'/downloads/{vendor_name}/{output_filename}'
         })
 
     except ValueError as e:
@@ -306,24 +305,28 @@ def upload_file():
         app.logger.error(f"Error processing upload: {str(e)}")
         return jsonify({'success': False, 'message': f"An error occurred while processing the file: {str(e)}"})
 
-@app.route('/download/<vendor>/<filename>')
+@app.route('/downloads/<vendor>/<filename>')
 def download_file(vendor, filename):
-    """Handle file downloads without page navigation"""
+    """Handle file downloads."""
     try:
-        uploads = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'])
-        response = send_from_directory(
-            directory=os.path.join(uploads, vendor),
-            path=filename,
-            as_attachment=True
-        )
-        # Add headers to prevent navigation
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-        return response
+        vendor_folder = os.path.join(DOWNLOAD_FOLDER, vendor)
+        os.makedirs(vendor_folder, exist_ok=True)
+        
+        app.logger.info(f"Attempting to download file from: {vendor_folder}/{filename}")
+        
+        if os.path.exists(os.path.join(vendor_folder, filename)):
+            return send_from_directory(
+                vendor_folder,
+                filename,
+                as_attachment=True
+            )
+        else:
+            app.logger.error(f"File not found: {vendor_folder}/{filename}")
+            return jsonify({'success': False, 'message': 'File not found'}), 404
+            
     except Exception as e:
         app.logger.error(f"Download error: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Download failed'}), 500
 
 @app.route('/')
 def home():
@@ -390,24 +393,26 @@ def get_process_status(vendor, filename):
             status = processing_status.get(status_key)
             if status is None:
                 # Check if the processed file exists
-                processed_filename = f"{vendor}_{filename}"
-                if os.path.exists(os.path.join(DOWNLOAD_FOLDER, vendor, processed_filename)):
+                processed_filename = f"{vendor}_{os.path.splitext(filename)[0]}.xlsx"
+                processed_path = os.path.join(DOWNLOAD_FOLDER, vendor, processed_filename)
+                if os.path.exists(processed_path):
+                    # Make sure to use the correct URL path
                     return jsonify({
                         'status': 'Completed!',
-                        'progress': 1.0
+                        'progress': 1.0,
+                        'downloadUrl': f'/downloads/{vendor}/{processed_filename}'  # This URL must match your download route
                     })
-                else:
-                    # Update progress based on current status
-                    return jsonify({
-                        'status': status['status'],
-                        'progress': status['progress'] if status['progress'] < 1.0 else 1.0
-                    })
+            return jsonify(status or {
+                'status': 'Processing...',
+                'progress': 0.5
+            })
     except Exception as e:
         app.logger.error(f"Error getting process status: {str(e)}")
         return jsonify({
             'status': 'Error',
-            'progress': 1.0
-        })
+            'progress': 0.0,
+            'error': str(e)
+        }), 200
 
 
 def update_processing_status(vendor, filename, status, progress):
@@ -415,17 +420,10 @@ def update_processing_status(vendor, filename, status, progress):
     try:
         status_key = f"{vendor}_{filename}"
         with status_lock:
-            if progress >= 1.0:
-                # If process is complete, remove the status
-                if status_key in processing_status:
-                    del processing_status[status_key]
-                app.logger.info(f"Processing completed and status cleared for {status_key}")
-            else:
-                processing_status[status_key] = {
-                    'status': status,
-                    'progress': progress
-                }
-                app.logger.info(f"Status updated: {status} - {progress}")
+            processing_status[status_key] = {
+                'status': status,
+                'progress': progress
+            }
     except Exception as e:
         app.logger.error(f"Error updating process status: {str(e)}")
 

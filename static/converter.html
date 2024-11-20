@@ -67,13 +67,11 @@
                             </button>
 
                             <div id="progressContainer" style="display: none;">
-                                <div class="progress-wrapper">
-                                    <div class="progress-bar">
-                                        <div class="progress-fill"></div>
-                                    </div>
-                                    <div class="progress-text">Processing: 0%</div>
-                                    <div class="progress-status">Initializing...</div>
+                                <div class="progress">
+                                    <div class="progress-fill" id="progress-bar"></div>
                                 </div>
+                                <div class="progress-text" id="progress-text"></div>
+                                <div class="progress-status" id="status-message"></div>
                             </div>
                         </form>
                     </div>
@@ -86,13 +84,11 @@
                         
                         <div id="response" class="response-message"></div>
                         
-                        <div class="download-section">
-                            <a id="downloadLink" href="#" class="download-link">
-                                <button type="button" id="downloadButton" class="download-button">
-                                    <i data-lucide="download" class="download-icon"></i>
-                                    Download Converted File
-                                </button>
-                            </a>
+                        <div class="download-section" style="display: block;">
+                            <button type="button" id="downloadButton" class="download-button" style="display: inline-block;">
+                                <i data-lucide="download" class="download-icon"></i>
+                                Download Converted File
+                            </button>
                         </div>
                     </div>
                 </div>

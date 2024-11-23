@@ -15,12 +15,13 @@ import time
 logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__, static_folder='static')
 CORS(app)
+logger = logging.getLogger(__name__)
 
 # Define folders
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 PROCESSED_FOLDER = os.path.join(BASE_DIR, "processed")
-DESKTOP_DOWNLOADS = os.path.join(os.path.expanduser("~/Downloads"))
+DESKTOP_DOWNLOADS = os.path.join(os.path.expanduser('~'), 'Downloads')
 UPLOAD_LOG_FILE = os.path.join(BASE_DIR, 'upload_log.json')
 
 # Ensure directories exist
@@ -211,10 +212,30 @@ def map_columns(df):
         app.logger.error(f"Error mapping columns: {str(e)}")
         raise ValueError(f"Error mapping columns: {str(e)}")
 
+def ensure_directory_permissions():
+    """Ensure all required directories have correct permissions"""
+    directories = [UPLOAD_FOLDER, PROCESSED_FOLDER, DESKTOP_DOWNLOADS]
+    for directory in directories:
+        try:
+            os.makedirs(directory, exist_ok=True)
+            # Ensure write permissions (on Unix systems)
+            if os.name != 'nt':  # If not Windows
+                os.chmod(directory, 0o755)
+        except Exception as e:
+            logger.error(f"Permission error creating directory {directory}: {str(e)}")
+            raise
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     """Handle file upload and processing."""
     try:
+        logger.debug(f"Operating System: {os.name}")
+        logger.debug(f"Current working directory: {os.getcwd()}")
+        logger.debug(f"Upload folder path: {UPLOAD_FOLDER}")
+        logger.debug(f"Processed folder path: {PROCESSED_FOLDER}")
+        
+        ensure_directory_permissions()
+        logger.debug("Starting file upload")
         if 'file' not in request.files:
             return jsonify({'success': False, 'message': 'No file uploaded'})
         
@@ -287,6 +308,8 @@ def upload_file():
         from threading import Thread
         Thread(target=clear_status, daemon=True).start()
         
+        logger.debug("Processing file...")
+        logger.debug("File processing complete")
         return jsonify({
             'success': True,
             'message': 'File processed successfully',

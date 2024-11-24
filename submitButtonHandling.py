@@ -15,13 +15,12 @@ import time
 logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__, static_folder='static')
 CORS(app)
-logger = logging.getLogger(__name__)
 
 # Define folders
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 PROCESSED_FOLDER = os.path.join(BASE_DIR, "processed")
-DESKTOP_DOWNLOADS = os.path.join(os.path.expanduser('~'), 'Downloads')
+DESKTOP_DOWNLOADS = os.path.join(os.path.expanduser("~/Downloads"))
 UPLOAD_LOG_FILE = os.path.join(BASE_DIR, 'upload_log.json')
 
 # Ensure directories exist

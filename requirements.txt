@@ -1,7 +1,0 @@
-flask
-flask-cors
-pandas
-openpyxl
-xlrd
-googletrans==3.1.0a0
-werkzeug

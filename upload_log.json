@@ -71,12 +71,14 @@
         "filename": "20241125_151518_20241125_115425_20241120_160818_20241118_001911_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
         "vendor": "KAISI",
         "timestamp": "2024-11-25 15:15:18",
-        "status": "uploaded"
+        "status": "Downloaded",
+        "downloaded_at": "2024-11-25 15:25:01"
     },
     {
         "filename": "20241125_151518_20241125_115425_20241120_160818_20241118_001911_Copy_of_KC_Youwant_INV00222102_copy.xlsx",
         "vendor": "KAISI",
         "timestamp": "2024-11-25 15:15:29",
-        "status": "completed"
+        "status": "Downloaded",
+        "downloaded_at": "2024-11-25 15:25:01"
     }
 ]

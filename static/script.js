@@ -76,27 +76,70 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Function to handle download actions
-    const handleDownload = async (vendor, filename) => {
-        window.location.href = `/downloads/${vendor}/${filename}`;
+    async function handleDownload(vendor, filename, downloadUrl) {
         try {
-            const response = await fetch('/update-download-status', {
+            // Update download status on the server
+            const statusResponse = await fetch('/update-download-status', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ vendor, filename }),
             });
-            const data = await response.json();
-            if (!data.success) {
-                console.error('Failed to update download status:', data.message);
-            } else {
-                await updateUploadHistory(); // Refresh history after download
-            }
-        } catch (error) {
-            console.error('Error updating download status:', error);
-        }
-    };
 
+            const statusData = await statusResponse.json();
+            if (!statusData.success) {
+                throw new Error('Failed to update download status');
+            }
+
+            // Initiate the file download
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('Error handling download:', error);
+            alert('Failed to download the file. Please try again.');
+        }
+    }
+
+    // Function to load completed files and add download buttons
+    async function loadCompletedFiles() {
+    try {
+        const response = await fetch('/upload-history');
+        const data = await response.json();
+
+        if (!data.success) {
+            console.error('Failed to fetch upload history:', data.message);
+            return;
+        }
+
+        const completedFiles = data.logs.filter((log) => log.status === 'completed');
+        const tbody = document.getElementById('completed-files');
+        tbody.innerHTML = '';
+
+        completedFiles.forEach((file) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="px-6 py-4 text-sm text-gray-500">${file.timestamp}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${file.filename}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${file.vendor}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${file.status}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">
+                    <button class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors" onclick="handleDownload('${file.vendor}', '${file.filename}', '/downloads/${file.vendor}/${file.filename}')">
+                        Download
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    } catch (error) {
+        console.error('Error loading completed files:', error);
+    }
+}
+
+// Call the function when the DOM is loaded
+document.addEventListener('DOMContentLoaded', loadCompletedFiles);
     // Helper function to determine status badge class
     const getStatusClass = (status) => {
         const lowerStatus = status.toLowerCase();

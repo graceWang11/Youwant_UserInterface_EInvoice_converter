@@ -43,6 +43,7 @@ To download the project, pull the Docker image using the following command:
 
 ```bash
 docker pull wanly129/youwantconverter:latest
+docker run -p 5000:5000 wanly129/youwantconverter
 ```
 
 ---

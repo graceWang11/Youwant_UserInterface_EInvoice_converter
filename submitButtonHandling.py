@@ -15,6 +15,7 @@ import time
 logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__, static_folder='static')
 CORS(app)
+logger = logging.getLogger(__name__)
 
 # Define folders
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -148,6 +149,10 @@ def log_upload(filename, vendor_name, status):
     Log file upload details to a JSON file
     """
     try:
+        # Ensure the log file directory exists
+        log_dir = os.path.dirname(UPLOAD_LOG_FILE)
+        os.makedirs(log_dir, exist_ok=True)
+        
         # Create log entry
         log_entry = {
             'filename': filename,
@@ -156,23 +161,31 @@ def log_upload(filename, vendor_name, status):
             'status': status
         }
         
-        # Read existing logs
+        logs = []
+        # Read existing logs if file exists
         if os.path.exists(UPLOAD_LOG_FILE):
-            with open(UPLOAD_LOG_FILE, 'r') as f:
-                logs = json.load(f)
-        else:
-            logs = []
+            try:
+                with open(UPLOAD_LOG_FILE, 'r') as f:
+                    logs = json.load(f)
+            except json.JSONDecodeError:
+                logger.error("Error reading log file, starting fresh")
+                logs = []
         
         # Append new log
         logs.append(log_entry)
         
-        # Write updated logs
+        # Write updated logs with proper permissions
         with open(UPLOAD_LOG_FILE, 'w') as f:
             json.dump(logs, f, indent=4)
+        
+        # Set proper permissions for the log file
+        if os.name != 'nt':  # If not Windows
+            os.chmod(UPLOAD_LOG_FILE, 0o666)
             
-        app.logger.info(f"Upload logged: {log_entry}")
+        logger.info(f"Upload logged successfully: {log_entry}")
+        
     except Exception as e:
-        app.logger.error(f"Error logging upload: {str(e)}")
+        logger.error(f"Error logging upload: {str(e)}", exc_info=True)
 
 def map_columns(df):
     """Map original column names to required column names"""
@@ -294,6 +307,14 @@ def upload_file():
         
         # Set final status to Completed! with progress 1.0
         update_processing_status(vendor_name, original_filename, "Completed!", 1.0)
+        log_upload(filename, vendor_name, 'completed')
+
+        return jsonify({'success': True, 'message': 'File processed successfully'})
+
+    except Exception as e:
+        log_upload(filename, vendor_name, f'failed: {str(e)}')  # Log failure
+        app.logger.error(f"Error processing upload: {str(e)}")
+        return jsonify({'success': False, 'message': f"An error occurred while processing the file: {str(e)}"})
         
         # Clear the status after a delay (optional)
         def clear_status():
@@ -375,14 +396,30 @@ def history():
 def view_upload_history():
     """View the upload history"""
     try:
+        logger.debug(f"Attempting to read upload history from: {UPLOAD_LOG_FILE}")
+        
         if os.path.exists(UPLOAD_LOG_FILE):
-            with open(UPLOAD_LOG_FILE, 'r') as f:
-                logs = json.load(f)
-            return jsonify({'success': True, 'logs': logs})
-        return jsonify({'success': True, 'logs': []})
+            try:
+                with open(UPLOAD_LOG_FILE, 'r') as f:
+                    logs = json.load(f)
+                
+                # Add download status information
+                for log in logs:
+                    if 'downloaded_at' in log:
+                        log['status'] = f"Downloaded at {log['downloaded_at']}"
+                
+                logger.debug(f"Successfully loaded {len(logs)} log entries")
+                return jsonify({'success': True, 'logs': logs})
+            except json.JSONDecodeError as e:
+                logger.error(f"Error decoding JSON from log file: {str(e)}")
+                return jsonify({'success': False, 'message': 'Error reading log file', 'logs': []})
+        else:
+            logger.debug("No upload history file found, returning empty list")
+            return jsonify({'success': True, 'logs': []})
     except Exception as e:
-        app.logger.error(f"Error retrieving upload history: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)})
+        logger.error(f"Error retrieving upload history: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'message': str(e), 'logs': []})
+
 @app.route('/uploads/<vendor_name>')
 def list_uploaded_files(vendor_name):
     """List all files uploaded by a specific vendor"""
@@ -485,7 +522,76 @@ def update_processing_status(vendor, filename, status, progress):
     except Exception as e:
         app.logger.error(f"Error updating process status: {str(e)}")
 
+@app.route('/update-download-status', methods=['POST'])
+def update_download_status():
+    """Update the status of a file after download"""
+    try:
+        data = request.json
+        vendor = data.get('vendor')
+        filename = data.get('filename')
+        
+        if not vendor or not filename:
+            return jsonify({'success': False, 'message': 'Vendor and filename required'})
+        
+        # Read current logs
+        if os.path.exists(UPLOAD_LOG_FILE):
+            with open(UPLOAD_LOG_FILE, 'r') as f:
+                logs = json.load(f)
+            
+            # Find and update the relevant log entry
+            for log in logs:
+                if log['filename'] == filename and log['vendor'] == vendor:
+                    log['status'] = 'Downloaded'
+                    log['downloaded_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Write updated logs back to file
+            with open(UPLOAD_LOG_FILE, 'w') as f:
+                json.dump(logs, f, indent=4)
+            
+            logger.info(f"Updated download status for {filename}")
+            return jsonify({'success': True})
+        
+        return jsonify({'success': False, 'message': 'No log file found'})
+        
+    except Exception as e:
+        logger.error(f"Error updating download status: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'message': str(e)})
 
+def update_file_status(filename, vendor, status):
+    """Update the status of a file in the upload log"""
+    try:
+        with open('upload_log.json', 'r') as f:
+            logs = json.load(f)
+        
+        # Find and update the matching entry
+        for log in logs:
+            if log['filename'] == filename and log['vendor'] == vendor:
+                log['status'] = status
+                break
+        
+        with open('upload_log.json', 'w') as f:
+            json.dump(logs, f, indent=4)
+        
+        return True
+    except Exception as e:
+        print(f"Error updating file status: {e}")
+        return False
+
+@app.route('/update-file-status', methods=['POST'])
+def handle_status_update():
+    try:
+        data = request.json
+        filename = data.get('filename')
+        vendor = data.get('vendor')
+        status = data.get('status')
+        
+        if not all([filename, vendor, status]):
+            return jsonify({'success': False, 'message': 'Missing required fields'})
+        
+        success = update_file_status(filename, vendor, status)
+        return jsonify({'success': success})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

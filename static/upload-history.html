@@ -1,164 +1,104 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Upload History</title>
-    <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 2rem;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        .section {
-            margin-bottom: 2rem;
-        }
-        .download-link {
-            color: blue;
-            text-decoration: underline;
-            cursor: pointer;
-        }
-        .file-size {
-            color: #666;
-            font-size: 0.9em;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
-        .back-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1.5rem;
-            background-color: #3b82f6;
-            color: white;
-            text-decoration: none;
-            border-radius: 0.375rem;
-            font-weight: 500;
-            transition: background-color 0.2s;
-        }
-        .back-button:hover {
-            background-color: #2563eb;
-        }
-    </style>
-    <script src="https://unpkg.com/lucide@latest"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Management History</title>
+  <link rel="stylesheet" href="/static/history.css">
+
 </head>
-<body>
-    <div class="header">
-        <h1>Upload History</h1>
-        <a href="/" class="back-button">
-            <i data-lucide="arrow-left" style="width: 1rem; height: 1rem;"></i>
-            Back to Converter
-        </a>
+<body class="upload-history">
+  <div class="min-h-screen bg-gray-100 py-8">
+    <div class="container">
+      <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div class="p-6 sm:p-8">
+          <!-- Header Section -->
+          <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">File Management History</h1>
+            <a href="/" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+              Back to Converter
+            </a>
+          </div>
+
+          <!-- Error Alert -->
+          <div id="error-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <strong class="font-bold">Error: </strong>
+            <span id="error-text" class="block sm:inline"></span>
+          </div>
+
+          <!-- Tab Navigation -->
+          <div class="w-full">
+            <div class="flex space-x-1 rounded-xl bg-blue-900/20 p-1">
+              <button class="tab-button w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-blue-700 focus:outline-none focus:ring-2 bg-white shadow">
+                Uploaded
+              </button>
+              <button class="tab-button w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-blue-700 focus:outline-none focus:ring-2">
+                Processing
+              </button>
+              <button class="tab-button w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-blue-700 focus:outline-none focus:ring-2">
+                Completed
+              </button>
+            </div>
+
+            <!-- Tab Panels -->
+            <div class="mt-2">
+              <!-- Uploaded Tab -->
+              <div class="panel rounded-xl bg-white p-3">
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File Name</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    <!-- Dynamic rows for Uploaded Tab -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Processing Tab -->
+              <div class="panel hidden rounded-xl bg-white p-3">
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File Name</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    <!-- Dynamic rows for Processing Tab -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Completed Tab -->
+              <div class="panel hidden rounded-xl bg-white p-3">
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File Name</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    <!-- Dynamic rows for Completed Tab -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    
-    <div class="section">
-        <h2>Processing History</h2>
-        <table id="historyTable">
-            <thead>
-                <tr>
-                    <th>Timestamp</th>
-                    <th>Filename</th>
-                    <th>Vendor</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody id="historyBody">
-            </tbody>
-        </table>
-    </div>
-
-    <div class="section">
-        <h2>Uploaded Files</h2>
-        <table id="uploadedFilesTable">
-            <thead>
-                <tr>
-                    <th>Upload Time</th>
-                    <th>Filename</th>
-                    <th>Vendor</th>
-                    <th>Size</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="uploadedFilesBody">
-            </tbody>
-        </table>
-    </div>
-
-    <script>
-        // Initialize Lucide icons
-        lucide.createIcons();
-        
-        // Format file size
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-
-        // Load processing history
-        fetch('/upload-history')
-            .then(response => response.json())
-            .then(data => {
-                const tbody = document.getElementById('historyBody');
-                data.logs.forEach(log => {
-                    const row = tbody.insertRow();
-                    row.insertCell(0).textContent = log.timestamp;
-                    row.insertCell(1).textContent = log.filename;
-                    row.insertCell(2).textContent = log.vendor;
-                    row.insertCell(3).textContent = log.status;
-                });
-            })
-            .catch(error => console.error('Error:', error));
-
-        // Load uploaded files for each vendor
-        fetch('/upload-history')
-            .then(response => response.json())
-            .then(data => {
-                // Get unique vendors
-                const vendors = [...new Set(data.logs.map(log => log.vendor))];
-                
-                // Fetch files for each vendor
-                return Promise.all(vendors.map(vendor => 
-                    fetch(`/uploads/${vendor}`)
-                        .then(response => response.json())
-                        .then(data => ({vendor, files: data.files}))
-                ));
-            })
-            .then(vendorFiles => {
-                const tbody = document.getElementById('uploadedFilesBody');
-                vendorFiles.forEach(({vendor, files}) => {
-                    files.forEach(file => {
-                        const row = tbody.insertRow();
-                        row.insertCell(0).textContent = file.uploaded_at;
-                        row.insertCell(1).textContent = file.filename;
-                        row.insertCell(2).textContent = vendor;
-                        row.insertCell(3).textContent = formatFileSize(file.size);
-                        
-                        const actionCell = row.insertCell(4);
-                        const downloadLink = document.createElement('a');
-                        downloadLink.href = `/uploads/${vendor}/${file.filename}`;
-                        downloadLink.className = 'download-link';
-                        downloadLink.textContent = 'Download';
-                        actionCell.appendChild(downloadLink);
-                    });
-                });
-            })
-            .catch(error => console.error('Error:', error));
-    </script>
+  </div>
+  <script src="/static/script.js"></script>
 </body>
-</html> 
+</html>

@@ -330,4 +330,49 @@ document.addEventListener("DOMContentLoaded", function() {
             <a href="/download/${encodeURIComponent(filename)}" download>${filename}</a>
         `;
     }
+
+    async function updateFileStatus(filename, vendor, status) {
+        try {
+            const response = await fetch('/update-file-status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    filename: filename,
+                    vendor: vendor,
+                    status: status
+                })
+            });
+            
+            const data = await response.json();
+            return data.success;
+        } catch (error) {
+            console.error('Error updating file status:', error);
+            return false;
+        }
+    }
+
+    // Modify your existing upload function to update status
+    async function uploadFile(file, vendor) {
+        // ... existing upload code ...
+        
+        // After successful upload
+        await updateFileStatus(file.name, vendor, 'uploaded');
+        
+        // During processing
+        await updateFileStatus(file.name, vendor, 'processing');
+        
+        // When processing is complete
+        await updateFileStatus(file.name, vendor, 'processed');
+    }
+
+    // Modify your download function
+    async function downloadFile(filename, vendor) {
+        // Before download
+        await updateFileStatus(filename, vendor, 'downloaded');
+        
+        // Proceed with download
+        window.location.href = `/downloads/${vendor}/${filename}`;
+    }
 });
